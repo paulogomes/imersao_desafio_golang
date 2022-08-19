@@ -96,20 +96,23 @@ func transfer(c *gin.Context) {
 
 	tx, err := DB.Begin()
 
-	query := "SELECT amount FROM account_number = ?"
+	query := "SELECT amount FROM account WHERE account_number = ?"
 	update := "UPDATE account SET amount = ? WHERE account_number = ?"
-	statement1, _ := DB.Prepare(update)
+	statement1, _ := tx.Prepare(update)
 	defer statement1.Close()
 	statement1.Exec(newTransfer.Amount*-1, newTransfer.From)
 	// Obtem novo Amount
-	stm, _ := DB.Prepare(query)
+	stm, err := tx.Prepare(query)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err})
+	}
 	stm.QueryRow(newTransfer.From).Scan(&FromNewAmount)
 
-	statement2, _ := DB.Prepare(update)
+	statement2, _ := tx.Prepare(update)
 	defer statement2.Close()
 	statement2.Exec(newTransfer.Amount, newTransfer.To)
 	// Obtem novo Amount
-	stm2, _ := DB.Prepare(query)
+	stm2, _ := tx.Prepare(query)
 	stm2.QueryRow(newTransfer.From).Scan(&ToNewAmount)
 
 	tx.Commit()
